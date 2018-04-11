@@ -19,7 +19,6 @@ public class HealthManager : MonoBehaviour {
     public Slider healthBar;
     public Slider feedbackBar;
     Coroutine feedbackCor;
-    Coroutine recoveryCor;
     public PlayerController player;
 
     void OnCollisionStay2D (Collision2D col)
@@ -30,7 +29,7 @@ public class HealthManager : MonoBehaviour {
             {
                 //Invincibility
                 isRecovering = true;
-                recoveryCor = StartCoroutine(RecoveryCor());
+                StartCoroutine(RecoveryCor());
 
                 //Setup feedback bar
                 feedbackBar.value = health / maxHealth;

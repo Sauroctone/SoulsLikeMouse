@@ -23,6 +23,7 @@ public class PlayerController : MonoBehaviour {
     public float dashSpeed;
     //public float dashTime;
     public int dashFixedFrameCount;
+    public float hitFreezeTime;
     public float minDashDistance;
     //public float maxDashDistance;
     public float dashFreeze;
@@ -100,6 +101,9 @@ public class PlayerController : MonoBehaviour {
                 CheckRightClick();
                 GetOrientation();
                 break;
+
+            case PlayerStates.Frozen:
+                break;
         }
 
         //print(Vector3.Distance(mousePos, transform.position));
@@ -127,6 +131,10 @@ public class PlayerController : MonoBehaviour {
                 break;
 
             case PlayerStates.ChargingAttack:
+                rb.velocity = Vector2.zero;
+                break;
+
+            case PlayerStates.Frozen:
                 rb.velocity = Vector2.zero;
                 break;
         }
@@ -247,6 +255,11 @@ public class PlayerController : MonoBehaviour {
         return Mathf.Atan2(direction.y, direction.x) * 180 / Mathf.PI;
     }
 
+    public void Freeze()
+    {
+        StartCoroutine(FreezeCor());
+    }
+
     IEnumerator DashCor()
     {
         staminaMan.UseStamina(dashCost);
@@ -355,6 +368,14 @@ public class PlayerController : MonoBehaviour {
         yield return new WaitForSeconds(dashCooldown);
 
         canDash = true;
+    }
+
+    IEnumerator FreezeCor()
+    {
+        PlayerStates prevState = state;
+        state = PlayerStates.Frozen;
+        yield return new WaitForSeconds(hitFreezeTime);
+        state = prevState;
     }
 
     IEnumerator DodgeCor()
