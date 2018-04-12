@@ -21,28 +21,25 @@ public class HealthManager : MonoBehaviour {
     Coroutine feedbackCor;
     public PlayerController player;
 
-    void OnCollisionStay2D (Collision2D col)
+    public void TakeDamage(float _damage)
     {
-        if (col.gameObject.tag == "EnemyDamage")
+        if (!isRecovering && !player.isDodging)
         {
-            if (!isRecovering && !player.isDodging)
-            {
-                //Invincibility
-                isRecovering = true;
-                StartCoroutine(RecoveryCor());
+            //Invincibility
+            isRecovering = true;
+            StartCoroutine(RecoveryCor());
 
-                //Setup feedback bar
-                feedbackBar.value = health / maxHealth;
-                if (feedbackCor != null)
-                    StopCoroutine(feedbackCor);
+            //Setup feedback bar
+            feedbackBar.value = health / maxHealth;
+            if (feedbackCor != null)
+                StopCoroutine(feedbackCor);
 
-                health -= 30;
-                Mathf.Clamp(health, 0f, maxHealth);
+            health -= _damage;
+            Mathf.Clamp(health, 0f, maxHealth);
 
-                //Feedback on bars
-                UpdateHealthBar();
-                feedbackCor = StartCoroutine(FeedbackBarCor(health));
-            }
+            //Feedback on bars
+            UpdateHealthBar();
+            feedbackCor = StartCoroutine(FeedbackBarCor(health));
         }
     }
 

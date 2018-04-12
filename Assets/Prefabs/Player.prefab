@@ -69,7 +69,7 @@ GameObject:
   serializedVersion: 5
   m_Component:
   - component: {fileID: 4970970430322630}
-  - component: {fileID: 114297818971396474}
+  - component: {fileID: 114568213758331450}
   m_Layer: 0
   m_Name: Attack
   m_TagString: Untagged
@@ -109,7 +109,7 @@ GameObject:
   - component: {fileID: 114266086848609078}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -392,19 +392,6 @@ MonoBehaviour:
   healthBar: {fileID: 0}
   feedbackBar: {fileID: 0}
   player: {fileID: 114472337350413008}
---- !u!114 &114297818971396474
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 1181690004272116}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 38a46e3f841d7be408f92aef16fb5bdb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  damage: 0
-  player: {fileID: 114472337350413008}
 --- !u!114 &114472337350413008
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -451,6 +438,19 @@ MonoBehaviour:
   rb: {fileID: 50673899724422294}
   staminaMan: {fileID: 114970649469252442}
   rend: {fileID: 212370494971619782}
+--- !u!114 &114568213758331450
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1181690004272116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0b7e81f824434140b65cf94346434e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  damage: 30
+  player: {fileID: 114472337350413008}
 --- !u!114 &114970649469252442
 MonoBehaviour:
   m_ObjectHideFlags: 1
