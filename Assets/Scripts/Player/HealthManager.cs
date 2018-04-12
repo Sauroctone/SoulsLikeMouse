@@ -35,12 +35,17 @@ public class HealthManager : MonoBehaviour {
                 StopCoroutine(feedbackCor);
 
             health -= _damage;
-            Mathf.Clamp(health, 0f, maxHealth);
+            health = Mathf.Clamp(health, 0f, maxHealth);
 
             //Feedback on bars
             UpdateHealthBar();
             feedbackCor = StartCoroutine(FeedbackBarCor(health));
         }
+    }
+
+    public void PushAway(Transform _pusher)
+    {
+        player.PushAway(_pusher);
     }
 
     void UpdateHealthBar()

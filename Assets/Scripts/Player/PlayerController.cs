@@ -14,59 +14,81 @@ public class PlayerController : MonoBehaviour {
     public float minDistance;
     float speed;
     Vector3 mousePos;
-    Vector2 direction;
-    Vector2 movement;
+    Vector3 direction;
+    Vector3 movement;
 
     [Header("Attack")]
-
+    //Initiation
     public float dashCost;
+    public int initFrameCount;
+    public int initFrameChain;
+    public float initSpeed;
+
+    //Attack
     public float dashSpeed;
-    //public float dashTime;
-    public int dashFixedFrameCount;
+    public int dashFrameCount;
+    public float damageNormal;
     public float hitFreezeTime;
-    public float minDashDistance;
-    //public float maxDashDistance;
+
+    //Recovery
     public float dashFreeze;
-    public float dashCooldown;
+    public float dashFreezeChain;
+
     bool canDash = true;
     bool leftClicked;
+    public bool chainingAttack;
+
+    public Color initColor;
+    public Color dashRecovColor;
 
     [Header("Charge Attack")]
+
     public float minChargeTimeState;
     public float minChargeTimeRelease;
     float chargeTime;
     public float chargedDashCost;
     public float chargedDashSpeed;
+    public float damageCharged;
     public int chargedFixedFrameCount;
 
     [Header("Dodge")]
 
     public float dodgeCost;
     public float dodgeSpeed;
-    // public float dodgeTime;
-    public int dodgeFixedFrameCount;
+    public int dodgeFrameCount;
     public float minDodgeDistance;
-    //public float maxDashDistance;
     public float dodgeRecovSpeed;
     public float dodgeRecovTime;
     public float dodgeCooldown;
     bool canDodge = true;
+    [HideInInspector]
     public bool isDodging;
     bool rightClicked;
     public Color normalColor;
     public Color invColor;
     public Color recovColor;
 
+    [Header("Pushed Away")]
+    public float pushSpeed;
+    public int pushFrameCount;
+    public Color hurtColor;
+
     [Header("References")]
     public GameObject hbTop;
     public GameObject hbBot;
     public GameObject hbLeft;
     public GameObject hbRight;
-    public Rigidbody2D rb;
+    public Rigidbody rb;
     public StaminaManager staminaMan;
     Coroutine leftBuffer;
     Coroutine rightBuffer;
     public SpriteRenderer rend;
+    public ParticleSystem walkDust;
+    public ParticleSystem dodgeDust;
+    public PlayerDamage damager;
+    Coroutine freezeCor;
+    Coroutine dashCor;
+    Coroutine dodgeCor;
 
     void Start()
     {
@@ -76,6 +98,7 @@ public class PlayerController : MonoBehaviour {
 
     void Update()
     {
+        //STATE MACHINE
         switch (state)
         {
             case PlayerStates.Normal:
@@ -83,6 +106,9 @@ public class PlayerController : MonoBehaviour {
                 CheckLeftClick();
                 CheckRightClick();
                 GetOrientation();
+                break;
+
+            case PlayerStates.Initiating:
                 break;
 
             case PlayerStates.Dashing:
@@ -103,6 +129,11 @@ public class PlayerController : MonoBehaviour {
                 break;
 
             case PlayerStates.Frozen:
+                break;
+
+            case PlayerStates.Hurt:
+                CheckLeftClick();
+                CheckRightClick();
                 break;
         }
 
@@ -113,13 +144,36 @@ public class PlayerController : MonoBehaviour {
     {
         movement = direction * speed;
 
+        //STATE MACHINE
         switch (state)
         {
             case PlayerStates.Normal:
                 if (Vector3.Distance(mousePos, transform.position) < minDistance)
-                    rb.velocity = Vector2.zero;
+                {
+                    rb.velocity = Vector3.zero;
+                }
+
                 else
+                {
                     rb.velocity = movement;
+                }
+
+                //Start walk dust
+                if (rb.velocity != Vector3.zero && movement != Vector3.zero && !walkDust.isPlaying)
+                {
+                    walkDust.Play();
+                }
+
+                //Stop walk dust
+                if (rb.velocity == Vector3.zero && walkDust.isPlaying)
+                {
+                    walkDust.Stop();
+                }
+
+                break;
+
+            case PlayerStates.Initiating:
+                rb.velocity = movement;
                 break;
 
             case PlayerStates.Dashing:
@@ -131,11 +185,15 @@ public class PlayerController : MonoBehaviour {
                 break;
 
             case PlayerStates.ChargingAttack:
-                rb.velocity = Vector2.zero;
+                rb.velocity = Vector3.zero;
                 break;
 
             case PlayerStates.Frozen:
-                rb.velocity = Vector2.zero;
+                rb.velocity = Vector3.zero;
+                break;
+
+            case PlayerStates.Hurt:
+                rb.velocity = movement;
                 break;
         }
 
@@ -148,7 +206,7 @@ public class PlayerController : MonoBehaviour {
         mousePos = new Vector3(mousePos.x, mousePos.y, 0f);
 
         direction = (mousePos - transform.position);
-        direction = new Vector2(direction.x, direction.y).normalized;
+        direction = new Vector3(direction.x, direction.y, 0f).normalized;
 
         //print(direction);
     }
@@ -189,9 +247,9 @@ public class PlayerController : MonoBehaviour {
 
             //Normal or charged attack
             if (chargeTime >= minChargeTimeRelease)
-                StartCoroutine(DashChargedCor());
+                dashCor = StartCoroutine(DashChargedCor());
             else
-                StartCoroutine(DashCor());
+                dashCor = StartCoroutine(DashCor());
 
             //reset charge time
             chargeTime = 0;
@@ -219,7 +277,7 @@ public class PlayerController : MonoBehaviour {
             if (rightBuffer != null)
                 StopCoroutine(rightBuffer);
 
-            StartCoroutine(DodgeCor());
+            dodgeCor = StartCoroutine(DodgeCor());
         }
     }
 
@@ -257,15 +315,49 @@ public class PlayerController : MonoBehaviour {
 
     public void Freeze()
     {
-        StartCoroutine(FreezeCor());
+        freezeCor = StartCoroutine(FreezeCor());
+    }
+
+    public void PushAway(Transform _pusher)
+    {
+        if (freezeCor != null)
+            StopCoroutine(freezeCor);
+        if (dashCor != null)
+            StopCoroutine(dashCor);
+        if (dodgeCor != null)
+            StopCoroutine(dodgeCor);
+
+        StartCoroutine(PushCor(_pusher));
     }
 
     IEnumerator DashCor()
     {
+        //INITIATION
+
+        print("begins dash");
+
+        canDash = false;
         staminaMan.UseStamina(dashCost);
 
+        state = PlayerStates.Initiating;
+        speed = initSpeed;
+        rend.color = initColor;
+
+        int frames = initFrameCount;
+        if (chainingAttack)
+            frames = initFrameChain;
+        while (frames > 0)
+        {
+            frames--;
+            yield return new WaitForFixedUpdate();
+        }
+
+        //ATTACK
+
+        damager.damage = damageNormal;
         GameObject hitbox = null;
 
+        //Hitbox to activate
         switch (facing)
         {
             case PlayerFacing.Top:
@@ -286,42 +378,56 @@ public class PlayerController : MonoBehaviour {
                 break;
         }
 
-        //Vector3 startPos = transform.position;
-        canDash = false;
         state = PlayerStates.Dashing;
         speed = dashSpeed;
+        rend.color = normalColor;
 
-        int frames = dashFixedFrameCount;
+        frames = dashFrameCount;
         while (frames > 0)
         {
             frames--;
             yield return new WaitForFixedUpdate();
         }
-//        yield return new WaitForSeconds(dashTime);
+
+        //RECOVERY
 
         speed = 0;
         hitbox.SetActive(false);
-        Vector3 endPos = transform.position;
-        //print(Vector3.Distance(startPos, endPos));
+        rend.color = dashRecovColor;
 
-        yield return new WaitForSeconds(dashFreeze);
+        if (chainingAttack)
+            yield return new WaitForSeconds(dashFreezeChain);
+        else
+            yield return new WaitForSeconds(dashFreeze);
 
-        speed = moveSpeed;
-        state = PlayerStates.Normal;
+        if (!leftClicked)
+        {
+            speed = moveSpeed;
+            state = PlayerStates.Normal;
+            rend.color = normalColor;
+            chainingAttack = false;
+        }
 
-        yield return new WaitForSeconds(dashCooldown);
+        else
+        {
+            chainingAttack = true;
+        }
 
         canDash = true;
     }
 
     IEnumerator DashChargedCor()
     {
-        print("charged");
+        // INITIATION
 
         staminaMan.UseStamina(chargedDashCost);
 
+        // ATTACK
+
+        damager.damage = damageCharged;
         GameObject hitbox = null;
 
+        //Hitbox to activate
         switch (facing)
         {
             case PlayerFacing.Top:
@@ -341,8 +447,7 @@ public class PlayerController : MonoBehaviour {
                 hitbox = hbRight;
                 break;
         }
-
-        //Vector3 startPos = transform.position;
+        
         canDash = false;
         state = PlayerStates.Dashing;
         speed = chargedDashSpeed;
@@ -353,20 +458,16 @@ public class PlayerController : MonoBehaviour {
             frames--;
             yield return new WaitForFixedUpdate();
         }
-        //        yield return new WaitForSeconds(dashTime);
+
+        // RECOVERY
 
         speed = 0;
         hitbox.SetActive(false);
-        //Vector3 endPos = transform.position;
-        //print(Vector3.Distance(startPos, endPos));
 
         yield return new WaitForSeconds(dashFreeze);
 
         speed = moveSpeed;
         state = PlayerStates.Normal;
-
-        yield return new WaitForSeconds(dashCooldown);
-
         canDash = true;
     }
 
@@ -387,14 +488,15 @@ public class PlayerController : MonoBehaviour {
         speed = dodgeSpeed;
         isDodging = true;
         rend.color = invColor;
+        walkDust.Stop();
+        dodgeDust.Play();
 
-        int frames = dodgeFixedFrameCount;
+        int frames = dodgeFrameCount;
         while (frames > 0)
         {
             frames--;
             yield return new WaitForFixedUpdate();
         }
-        //yield return new WaitForSeconds(dodgeTime);
 
         speed = dodgeRecovSpeed;
         isDodging = false;
@@ -407,8 +509,31 @@ public class PlayerController : MonoBehaviour {
         rend.color = normalColor;
 
         yield return new WaitForSeconds(dodgeCooldown);
+    }
 
+    IEnumerator PushCor(Transform _pusher)
+    {
+        speed = pushSpeed;
+        direction = (_pusher.position - transform.position);
+        direction = new Vector3(direction.x, direction.y, 0f).normalized;
+        rend.color = hurtColor;
+        state = PlayerStates.Hurt;
+
+        int frames = pushFrameCount;
+        while (frames > 0)
+        {
+            frames--;
+            yield return new WaitForFixedUpdate();
+        }
+
+        speed = moveSpeed;
+        state = PlayerStates.Normal;
+        rend.color = normalColor;
+        
+        //Reset stuff in case coroutines got interrupted
         canDodge = true;
+        canDash = true;
+        chainingAttack = false;
     }
 
     IEnumerator LeftClickBuffer()
